@@ -2,11 +2,10 @@ const cors = require('cors')
 const express = require('express')
 const { json } = require('body-parser')
 const camelCase = require('lodash.camelcase')
-const db = require('../../../infra/data/database')
 const usecases = require('../../../domain/usecases')
 const renderShelfHTML = require('@herbsjs/herbsshelf')
 const { generateRoutes } = require('@herbsjs/herbs2rest')
-const repositoriesFactory = require('../../../infra/data/repositories')
+const SlackClient = require('../../data/clients/slack-client')
 
 function cloneUsecases (usecases) {
     return Promise.all(usecases.map(uc => {
@@ -45,9 +44,6 @@ const mapUcToHTTPVerb = {
 }
 
 async function prepareRoutes (config) {
-    const conn = await db.factory(config)
-    const repositories = await repositoriesFactory(conn)
-
     // groupBy group
     const ucByGroup = usecases.reduce((acc, obj) => {
         if (Object.keys(acc).includes(obj.tags.group)) return acc
@@ -59,14 +55,18 @@ async function prepareRoutes (config) {
         const route = {
             name: `${camelCase(group)}`
         }
+
         for (const obj of ucByGroup[group]) {
-            const uc = obj.usecase(repositories)
+            const uc = obj.usecase(new SlackClient())
             const ucDescription = uc().description.toLowerCase()
 
-            for (const ucType of Object.keys(mapUcToHTTPVerb))
-                if (ucDescription.includes(ucType))
+            for (const ucType of Object.keys(mapUcToHTTPVerb)) {
+                if (ucDescription.includes(ucType)) {
                     route[mapUcToHTTPVerb[ucType].route] = newRoute(uc, mapUcToHTTPVerb[ucType].useId)
+                }
+            }
         }
+
         return route
     })
 

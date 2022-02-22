@@ -1,7 +1,7 @@
 const { usecase, step, Ok, Err } = require('@herbsjs/herbs')
 
 const useCase = slackClient => () =>
-	usecase('Create a message to send to Slack Bot', {
+	usecase('Receives a message to send to Slack Bot', {
 		request: {
 			message: String
 		},
